@@ -17,48 +17,92 @@
         <p class="text-muted">{{ $form->description }}</p>
     @endif
 
+    {{-- Errores de validación --}}
+    @if ($errors->any())
+        <div class="alert alert-danger">
+            <p class="mb-1"><strong>Hay errores en el formulario:</strong></p>
+            <ul class="mb-0">
+                @foreach ($errors->all() as $error)
+                    <li>{{ $error }}</li>
+                @endforeach
+            </ul>
+        </div>
+    @endif
+
+    {{-- Mensaje de éxito --}}
     @if(session('success'))
         <div class="alert alert-success">
             {{ session('success') }}
         </div>
     @endif
 
-    {{-- ⚠️ Por ahora ponemos campos fijos de ejemplo
-         Más adelante los vamos a generar dinámicamente desde $form->schema --}}
-    <form method="POST" action="{{ route('forms.public.submit', $form->slug) }}">
+    <form method="POST" action="{{ route('forms.public.submit', $form->slug) }}" novalidate>
+
         @csrf
 
-        <div class="mb-3">
-            <label for="nombre" class="form-label">Nombre</label>
-            <input
-                type="text"
-                id="nombre"
-                name="nombre"
-                class="form-control"
-                required
-            >
-        </div>
+        {{-- Campos generados dinámicamente desde el schema --}}
+        @foreach ($form->schema ?? [] as $field)
+            @php
+                $name = $field['name'] ?? null;
+                $label = $field['label'] ?? $name;
+                $required = !empty($field['required']);
+                $type = $field['type'] ?? 'text';
+            @endphp
 
-        <div class="mb-3">
-            <label for="email" class="form-label">Correo electrónico</label>
-            <input
-                type="email"
-                id="email"
-                name="email"
-                class="form-control"
-                required
-            >
-        </div>
+            @if ($type === 'text')
+                <div class="mb-3">
+                    <label class="form-label">{{ $label }}</label>
+                    <input
+                        type="text"
+                        name="{{ $name }}"
+                        class="form-control @error($name) is-invalid @enderror"
+                        value="{{ old($name) }}"
+                        @if($required) required @endif
+                    >
+                    @error($name)
+                        <div class="invalid-feedback">
+                            {{ $message }}
+                        </div>
+                    @enderror
+                </div>
+            @endif
 
-        <div class="mb-3">
-            <label for="mensaje" class="form-label">Mensaje</label>
-            <textarea
-                id="mensaje"
-                name="mensaje"
-                class="form-control"
-                rows="4"
-            ></textarea>
-        </div>
+            @if ($type === 'email')
+                <div class="mb-3">
+                    <label class="form-label">{{ $label }}</label>
+                    <input
+                        type="email"
+                        name="{{ $name }}"
+                        class="form-control @error($name) is-invalid @enderror"
+                        value="{{ old($name) }}"
+                        @if($required) required @endif
+                    >
+                    @error($name)
+                        <div class="invalid-feedback">
+                            {{ $message }}
+                        </div>
+                    @enderror
+                </div>
+            @endif
+
+            @if ($type === 'textarea')
+                <div class="mb-3">
+                    <label class="form-label">{{ $label }}</label>
+                    <textarea
+                        name="{{ $name }}"
+                        class="form-control @error($name) is-invalid @enderror"
+                        rows="4"
+                        @if($required) required @endif
+                    >{{ old($name) }}</textarea>
+                    @error($name)
+                        <div class="invalid-feedback">
+                            {{ $message }}
+                        </div>
+                    @enderror
+                </div>
+            @endif
+
+        @endforeach
 
         <button type="submit" class="btn btn-primary">
             Enviar

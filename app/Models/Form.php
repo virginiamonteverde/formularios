@@ -10,11 +10,14 @@ class Form extends Model
     use HasFactory;
 
     protected $fillable = [
-    'title',
-    'slug',
-    'description',
-    'is_published',
-    'schema',
+        'title',
+        'slug',
+        'description',
+        'is_published',
+        'schema',
     ];
 
+    protected $casts = [
+        'schema' => 'array',
+    ];
 }

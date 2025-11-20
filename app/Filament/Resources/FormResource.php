@@ -3,30 +3,30 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\FormResource\Pages;
-use App\Filament\Resources\FormResource\RelationManagers;
-use App\Models\Form as FormModel;
+use App\Models\Form;
 use Filament\Forms;
-use Filament\Forms\Form;
+use Filament\Forms\Form as FormForm;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
-use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\SoftDeletingScope;
 
 class FormResource extends Resource
 {
-    protected static ?string $model = FormModel::class;
+    protected static ?string $model = Form::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-rectangle-stack';
+    protected static ?string $navigationLabel = 'Formularios';
+    protected static ?string $modelLabel = 'Formulario';
+    protected static ?string $pluralModelLabel = 'Formularios';
 
-    public static function form(Form $form): Form
+    public static function form(FormForm $form): FormForm
     {
         return $form
             ->schema([
                 Forms\Components\TextInput::make('title')
                     ->label('Título')
                     ->required(),
-                
+
                 Forms\Components\TextInput::make('slug')
                     ->label('Slug (URL pública)')
                     ->unique(ignoreRecord: true)
@@ -38,16 +38,48 @@ class FormResource extends Resource
 
                 Forms\Components\Toggle::make('is_published')
                     ->label('Publicado'),
+
+                Forms\Components\Repeater::make('schema')
+                    ->label('Campos del formulario')
+                    ->schema([
+                        Forms\Components\Select::make('type')
+                            ->label('Tipo de campo')
+                            ->options([
+                                'text' => 'Texto',
+                                'email' => 'Email',
+                                'textarea' => 'Área de texto',
+                            ])
+                            ->required(),
+
+                        Forms\Components\TextInput::make('label')
+                            ->label('Etiqueta visible')
+                            ->required(),
+
+                        Forms\Components\TextInput::make('name')
+                            ->label('Nombre interno (name)')
+                            ->helperText('Sin espacios, sin acentos. Ej: nombre_completo')
+                            ->required(),
+
+                        Forms\Components\Toggle::make('required')
+                            ->label('Obligatorio')
+                            ->default(false),
+                    ])
+                    ->addActionLabel('Agregar campo')
+                    ->reorderable(true)   // permite drag & drop
+                    ->cloneable()         // duplicar campos
+                    ->columnSpanFull(),
             ]);
     }
-
 
     public static function table(Table $table): Table
     {
         return $table
             ->columns([
-                Tables\Columns\TextColumn::make('title')->label('Título')->searchable(),
-                Tables\Columns\TextColumn::make('slug')->label('Slug'),
+                Tables\Columns\TextColumn::make('title')
+                    ->label('Título')
+                    ->searchable(),
+                Tables\Columns\TextColumn::make('slug')
+                    ->label('Slug'),
                 Tables\Columns\IconColumn::make('is_published')
                     ->boolean()
                     ->label('Publicado'),
@@ -60,20 +92,12 @@ class FormResource extends Resource
             ]);
     }
 
-
-    public static function getRelations(): array
-    {
-        return [
-            //
-        ];
-    }
-
     public static function getPages(): array
     {
         return [
-            'index' => Pages\ListForms::route('/'),
+            'index'  => Pages\ListForms::route('/'),
             'create' => Pages\CreateForm::route('/create'),
-            'edit' => Pages\EditForm::route('/{record}/edit'),
+            'edit'   => Pages\EditForm::route('/{record}/edit'),
         ];
     }
 }

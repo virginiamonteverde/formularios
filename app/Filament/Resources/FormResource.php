@@ -6,6 +6,7 @@ use App\Filament\Resources\FormResource\Pages;
 use App\Models\Form;
 use Filament\Forms;
 use Filament\Forms\Form as FormForm;
+use Filament\Forms\Get;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
@@ -45,11 +46,14 @@ class FormResource extends Resource
                         Forms\Components\Select::make('type')
                             ->label('Tipo de campo')
                             ->options([
-                                'text' => 'Texto',
-                                'email' => 'Email',
+                                'text'     => 'Texto',
+                                'email'    => 'Email',
                                 'textarea' => 'Área de texto',
+                                'select'   => 'Lista desplegable',
+                                'checkbox' => 'Checkbox (sí/no)',
                             ])
-                            ->required(),
+                            ->required()
+                            ->live(),   // 🔹 IMPORTANTE: hace reactivo el campo
 
                         Forms\Components\TextInput::make('label')
                             ->label('Etiqueta visible')
@@ -63,6 +67,12 @@ class FormResource extends Resource
                         Forms\Components\Toggle::make('required')
                             ->label('Obligatorio')
                             ->default(false),
+
+                        // Opciones solo para campos select
+                        Forms\Components\KeyValue::make('options')
+                            ->label('Opciones (para select)')
+                            ->helperText('Clave = valor enviado, Valor = texto visible')
+                            ->visible(fn (Get $get) => $get('type') === 'select'),
                     ])
                     ->addActionLabel('Agregar campo')
                     ->reorderable(true)   // permite drag & drop

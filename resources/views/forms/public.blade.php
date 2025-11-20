@@ -47,8 +47,10 @@
                 $label = $field['label'] ?? $name;
                 $required = !empty($field['required']);
                 $type = $field['type'] ?? 'text';
+                $options = $field['options'] ?? [];
             @endphp
 
+            {{-- Campo de texto --}}
             @if ($type === 'text')
                 <div class="mb-3">
                     <label class="form-label">{{ $label }}</label>
@@ -60,13 +62,12 @@
                         @if($required) required @endif
                     >
                     @error($name)
-                        <div class="invalid-feedback">
-                            {{ $message }}
-                        </div>
+                        <div class="invalid-feedback">{{ $message }}</div>
                     @enderror
                 </div>
             @endif
 
+            {{-- Campo email --}}
             @if ($type === 'email')
                 <div class="mb-3">
                     <label class="form-label">{{ $label }}</label>
@@ -78,13 +79,12 @@
                         @if($required) required @endif
                     >
                     @error($name)
-                        <div class="invalid-feedback">
-                            {{ $message }}
-                        </div>
+                        <div class="invalid-feedback">{{ $message }}</div>
                     @enderror
                 </div>
             @endif
 
+            {{-- Textarea --}}
             @if ($type === 'textarea')
                 <div class="mb-3">
                     <label class="form-label">{{ $label }}</label>
@@ -95,14 +95,57 @@
                         @if($required) required @endif
                     >{{ old($name) }}</textarea>
                     @error($name)
-                        <div class="invalid-feedback">
-                            {{ $message }}
-                        </div>
+                        <div class="invalid-feedback">{{ $message }}</div>
                     @enderror
                 </div>
             @endif
 
+            {{-- Select --}}
+            @if ($type === 'select')
+                <div class="mb-3">
+                    <label class="form-label">{{ $label }}</label>
+                    <select
+                        name="{{ $name }}"
+                        class="form-select @error($name) is-invalid @enderror"
+                        @if($required) required @endif
+                    >
+                        <option value="" disabled selected>Seleccionar...</option>
+
+                        @foreach ($options as $value => $text)
+                            <option
+                                value="{{ $value }}"
+                                @if(old($name) == $value) selected @endif
+                            >
+                                {{ $text }}
+                            </option>
+                        @endforeach
+                    </select>
+
+                    @error($name)
+                        <div class="invalid-feedback">{{ $message }}</div>
+                    @enderror
+                </div>
+            @endif
+
+            {{-- Checkbox --}}
+            @if ($type === 'checkbox')
+                <div class="form-check mb-3">
+                    <input
+                        type="checkbox"
+                        name="{{ $name }}"
+                        value="1"
+                        class="form-check-input @error($name) is-invalid @enderror"
+                        @if(old($name)) checked @endif
+                    >
+                    <label class="form-check-label">{{ $label }}</label>
+
+                    @error($name)
+                        <div class="invalid-feedback d-block">{{ $message }}</div>
+                    @enderror
+                </div>
+            @endif
         @endforeach
+
 
         <button type="submit" class="btn btn-primary">
             Enviar

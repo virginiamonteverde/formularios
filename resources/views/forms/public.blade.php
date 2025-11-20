@@ -37,7 +37,6 @@
     @endif
 
     <form method="POST" action="{{ route('forms.public.submit', $form->slug) }}" novalidate>
-
         @csrf
 
         {{-- Campos generados dinámicamente desde el schema --}}
@@ -48,11 +47,20 @@
                 $required = !empty($field['required']);
                 $type = $field['type'] ?? 'text';
                 $options = $field['options'] ?? [];
+
+                $conditionField = $field['condition_field'] ?? null;
+                $conditionValue = $field['condition_value'] ?? null;
             @endphp
 
-            {{-- Campo de texto --}}
-            @if ($type === 'text')
-                <div class="mb-3">
+            {{-- Contenedor general del campo, con info de condición --}}
+            <div
+                class="conditional-field mb-3"
+                data-condition-field="{{ $conditionField }}"
+                data-condition-value="{{ $conditionValue }}"
+            >
+
+                {{-- Campo de texto --}}
+                @if ($type === 'text')
                     <label class="form-label">{{ $label }}</label>
                     <input
                         type="text"
@@ -64,12 +72,10 @@
                     @error($name)
                         <div class="invalid-feedback">{{ $message }}</div>
                     @enderror
-                </div>
-            @endif
+                @endif
 
-            {{-- Campo email --}}
-            @if ($type === 'email')
-                <div class="mb-3">
+                {{-- Campo email --}}
+                @if ($type === 'email')
                     <label class="form-label">{{ $label }}</label>
                     <input
                         type="email"
@@ -81,12 +87,10 @@
                     @error($name)
                         <div class="invalid-feedback">{{ $message }}</div>
                     @enderror
-                </div>
-            @endif
+                @endif
 
-            {{-- Textarea --}}
-            @if ($type === 'textarea')
-                <div class="mb-3">
+                {{-- Textarea --}}
+                @if ($type === 'textarea')
                     <label class="form-label">{{ $label }}</label>
                     <textarea
                         name="{{ $name }}"
@@ -97,19 +101,17 @@
                     @error($name)
                         <div class="invalid-feedback">{{ $message }}</div>
                     @enderror
-                </div>
-            @endif
+                @endif
 
-            {{-- Select --}}
-            @if ($type === 'select')
-                <div class="mb-3">
+                {{-- Select --}}
+                @if ($type === 'select')
                     <label class="form-label">{{ $label }}</label>
                     <select
                         name="{{ $name }}"
                         class="form-select @error($name) is-invalid @enderror"
                         @if($required) required @endif
                     >
-                        <option value="" disabled selected>Seleccionar...</option>
+                        <option value="" disabled @if(!old($name)) selected @endif>Seleccionar...</option>
 
                         @foreach ($options as $value => $text)
                             <option
@@ -124,28 +126,84 @@
                     @error($name)
                         <div class="invalid-feedback">{{ $message }}</div>
                     @enderror
-                </div>
-            @endif
+                @endif
 
-            {{-- Checkbox --}}
-            @if ($type === 'checkbox')
-                <div class="form-check mb-3">
-                    <input
-                        type="checkbox"
-                        name="{{ $name }}"
-                        value="1"
-                        class="form-check-input @error($name) is-invalid @enderror"
-                        @if(old($name)) checked @endif
-                    >
-                    <label class="form-check-label">{{ $label }}</label>
+                {{-- Checkbox simple (sí/no) --}}
+                @if ($type === 'checkbox')
+                    <div class="form-check">
+                        <input
+                            type="checkbox"
+                            name="{{ $name }}"
+                            value="1"
+                            class="form-check-input @error($name) is-invalid @enderror"
+                            @if(old($name)) checked @endif
+                            @if($required) required @endif
+                        >
+                        <label class="form-check-label">{{ $label }}</label>
+                        @error($name)
+                            <div class="invalid-feedback d-block">{{ $message }}</div>
+                        @enderror
+                    </div>
+                @endif
+
+                {{-- Grupo de checkboxes (múltiple selección) --}}
+                @if ($type === 'checkbox_group')
+                    @php
+                        $oldValues = old($name, []);
+                        if (!is_array($oldValues)) {
+                            $oldValues = [];
+                        }
+                    @endphp
+
+                    <p class="form-label mb-1">{{ $label }}</p>
+
+                    @foreach ($options as $value => $text)
+                        <div class="form-check">
+                            <input
+                                type="checkbox"
+                                name="{{ $name }}[]"
+                                value="{{ $value }}"
+                                class="form-check-input @error($name) is-invalid @enderror"
+                                @if(in_array($value, $oldValues)) checked @endif
+                            >
+                            <label class="form-check-label">
+                                {{ $text }}
+                            </label>
+                        </div>
+                    @endforeach
 
                     @error($name)
                         <div class="invalid-feedback d-block">{{ $message }}</div>
                     @enderror
-                </div>
-            @endif
-        @endforeach
+                @endif
 
+                {{-- Radio buttons --}}
+                @if ($type === 'radio')
+                    <p class="form-label mb-1">{{ $label }}</p>
+
+                    @foreach ($options as $value => $text)
+                        <div class="form-check">
+                            <input
+                                type="radio"
+                                name="{{ $name }}"
+                                value="{{ $value }}"
+                                class="form-check-input @error($name) is-invalid @enderror"
+                                @if(old($name) == $value) checked @endif
+                                @if($required && $loop->first) required @endif
+                            >
+                            <label class="form-check-label">
+                                {{ $text }}
+                            </label>
+                        </div>
+                    @endforeach
+
+                    @error($name)
+                        <div class="invalid-feedback d-block">{{ $message }}</div>
+                    @enderror
+                @endif
+
+            </div>
+        @endforeach
 
         <button type="submit" class="btn btn-primary">
             Enviar
@@ -153,5 +211,82 @@
     </form>
 
 </div>
+
+{{-- JS para manejar campos condicionales en vivo --}}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const blocks = document.querySelectorAll('.conditional-field');
+
+    function getFieldValue(fieldName) {
+        if (!fieldName) return null;
+
+        // checkbox_group: name="campo[]"
+        const group = document.querySelectorAll(`[name="${fieldName}[]"]`);
+        if (group.length) {
+            const values = [];
+            group.forEach(cb => {
+                if (cb.checked) values.push(cb.value);
+            });
+            return values;
+        }
+
+        // radio
+        const radioChecked = document.querySelector(`[name="${fieldName}"]:checked`);
+        if (radioChecked) {
+            return radioChecked.value;
+        }
+
+        // checkbox simple
+        const checkbox = document.querySelector(`input[type="checkbox"][name="${fieldName}"]`);
+        if (checkbox) {
+            return checkbox.checked ? '1' : '0';
+        }
+
+        // text / email / select, etc.
+        const input = document.querySelector(`[name="${fieldName}"]`);
+        if (input) {
+            return input.value;
+        }
+
+        return null;
+    }
+
+    function updateConditions() {
+        blocks.forEach(block => {
+            const field = block.dataset.conditionField;
+            const value = block.dataset.conditionValue;
+
+            // Si no tiene condición, siempre se muestra
+            if (!field || !value) {
+                block.style.display = '';
+                return;
+            }
+
+            const current = getFieldValue(field);
+            let shouldShow = false;
+
+            if (Array.isArray(current)) {
+                shouldShow = current.includes(value);
+            } else {
+                shouldShow = (current == value);
+            }
+
+            block.style.display = shouldShow ? '' : 'none';
+        });
+    }
+
+    // Actualizar al cargar (para respetar old())
+    updateConditions();
+
+    // Y cada vez que cambia algo dentro del formulario
+    const form = document.querySelector('form');
+    if (form) {
+        form.addEventListener('change', function (event) {
+            updateConditions();
+        });
+    }
+});
+</script>
+
 </body>
 </html>

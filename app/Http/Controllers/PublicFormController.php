@@ -28,31 +28,73 @@ class PublicFormController extends Controller
         $schema = $form->schema ?? [];
         $rules = [];
 
-        // Construimos reglas de validación dinámicamente según el schema
         if (is_array($schema)) {
             foreach ($schema as $field) {
                 if (empty($field['name'])) {
                     continue;
                 }
 
-                $fieldName = $field['name'];
+                $name = $field['name'];
+                $required = !empty($field['required']);
+                $type = $field['type'] ?? 'text';
+
+                // --- CONDICIÓN: si este campo depende de otro, vemos si se cumple ---
+                $conditionField = $field['condition_field'] ?? null;
+                $conditionValue = $field['condition_value'] ?? null;
+                $shouldValidate = true;
+
+                if ($conditionField && $conditionValue) {
+                    $currentValue = $request->input($conditionField);
+
+                    if (is_array($currentValue)) {
+                        // checkbox_group como campo controlador
+                        $shouldValidate = in_array($conditionValue, $currentValue);
+                    } else {
+                        $shouldValidate = ($currentValue == $conditionValue);
+                    }
+                }
+
+                // Si la condición NO se cumple, no agregamos reglas ni validamos este campo
+                if (! $shouldValidate) {
+                    continue;
+                }
+
+                // --- Reglas según tipo de campo ---
+                // checkbox_group se valida como array de strings
+                if ($type === 'checkbox_group') {
+                    $baseRule = $required ? 'required' : 'nullable';
+
+                    // El grupo completo
+                    $rules[$name] = $baseRule . '|array';
+
+                    // Cada valor dentro del grupo
+                    $rules[$name . '.*'] = 'string';
+
+                    continue;
+                }
 
                 $ruleParts = [];
 
-                // required / nullable según el schema
-                if (!empty($field['required'])) {
+                if ($required) {
                     $ruleParts[] = 'required';
                 } else {
                     $ruleParts[] = 'nullable';
                 }
 
-                // Tipo de campo
-                $type = $field['type'] ?? 'text';
-
                 switch ($type) {
                     case 'email':
                         $ruleParts[] = 'email';
                         $ruleParts[] = 'max:255';
+                        break;
+
+                    case 'select':
+                    case 'radio':
+                        $ruleParts[] = 'string';
+                        $ruleParts[] = 'max:255';
+                        break;
+
+                    case 'checkbox':
+                        $ruleParts[] = 'boolean';
                         break;
 
                     case 'textarea':
@@ -62,18 +104,17 @@ class PublicFormController extends Controller
                         break;
                 }
 
-                $rules[$fieldName] = implode('|', $ruleParts);
+                $rules[$name] = implode('|', $ruleParts);
             }
         }
 
-        // Si tenemos reglas, validamos; si no, aceptamos todo (menos _token)
+        // Validamos solo los campos que tienen reglas (es decir: visibles según condición)
         if (!empty($rules)) {
             $data = $request->validate($rules);
         } else {
             $data = $request->except('_token');
         }
 
-        // Guardamos el envío
         FormSubmission::create([
             'form_id'     => $form->id,
             'data'        => $data,

@@ -3,23 +3,23 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\FormSubmissionResource\Pages;
-use App\Filament\Resources\FormSubmissionResource\RelationManagers;
 use App\Models\FormSubmission;
 use Filament\Forms;
-use Filament\Forms\Form;
+use Filament\Forms\Form as FormForm;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
-use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\SoftDeletingScope;
 
 class FormSubmissionResource extends Resource
 {
     protected static ?string $model = FormSubmission::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-rectangle-stack';
+    protected static ?string $navigationIcon = 'heroicon-o-inbox-stack';
+    protected static ?string $navigationLabel = 'Envíos de formularios';
+    protected static ?string $modelLabel = 'Envío';
+    protected static ?string $pluralModelLabel = 'Envíos';
 
-    public static function form(Form $form): Form
+    public static function form(FormForm $form): FormForm
     {
         return $form
             ->schema([
@@ -27,22 +27,16 @@ class FormSubmissionResource extends Resource
                     ->label('ID')
                     ->disabled(),
 
-                Forms\Components\TextInput::make('form_id')
-                    ->label('ID del formulario')
-                    ->disabled(),
+                Forms\Components\Placeholder::make('form_name')
+                    ->label('Formulario')
+                    ->content(fn (FormSubmission $record) => $record->form?->title ?? '—'),
 
                 Forms\Components\KeyValue::make('data')
                     ->label('Datos enviados')
-                    ->disabled(),
-
-
-                Forms\Components\TextInput::make('ip_address')
-                    ->label('IP')
-                    ->disabled(),
-
-                Forms\Components\TextInput::make('user_agent')
-                    ->label('User Agent')
-                    ->disabled(),
+                    ->disableAddingRows()
+                    ->disableDeletingRows()
+                    ->disabled()
+                    ->columnSpanFull(),
             ]);
     }
 
@@ -54,33 +48,27 @@ class FormSubmissionResource extends Resource
                     ->label('ID')
                     ->sortable(),
 
-                Tables\Columns\TextColumn::make('form_id')
-                    ->label('Formulario ID'),
+                Tables\Columns\TextColumn::make('form.title')
+                    ->label('Formulario')
+                    ->sortable()
+                    ->searchable(),
 
                 Tables\Columns\TextColumn::make('created_at')
                     ->label('Fecha')
                     ->dateTime('d/m/Y H:i')
                     ->sortable(),
             ])
+            ->defaultSort('created_at', 'desc')
             ->actions([
                 Tables\Actions\ViewAction::make(),
             ]);
-    }
-
-
-    public static function getRelations(): array
-    {
-        return [
-            //
-        ];
     }
 
     public static function getPages(): array
     {
         return [
             'index' => Pages\ListFormSubmissions::route('/'),
-            'create' => Pages\CreateFormSubmission::route('/create'),
-            'edit' => Pages\EditFormSubmission::route('/{record}/edit'),
+            // Usamos sólo la página index; el ViewAction abre un modal con el schema de arriba
         ];
     }
 }

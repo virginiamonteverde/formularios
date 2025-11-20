@@ -46,14 +46,16 @@ class FormResource extends Resource
                         Forms\Components\Select::make('type')
                             ->label('Tipo de campo')
                             ->options([
-                                'text'     => 'Texto',
-                                'email'    => 'Email',
-                                'textarea' => 'Área de texto',
-                                'select'   => 'Lista desplegable',
-                                'checkbox' => 'Checkbox (sí/no)',
+                                'text'           => 'Texto',
+                                'email'          => 'Email',
+                                'textarea'       => 'Área de texto',
+                                'select'         => 'Lista desplegable',
+                                'checkbox'       => 'Checkbox (sí/no)',
+                                'checkbox_group' => 'Grupo de checkboxes',
+                                'radio'          => 'Radio buttons',
                             ])
                             ->required()
-                            ->live(),   // 🔹 IMPORTANTE: hace reactivo el campo
+                            ->live(),   // reactivo: actualiza visibilidad del KeyValue
 
                         Forms\Components\TextInput::make('label')
                             ->label('Etiqueta visible')
@@ -61,21 +63,38 @@ class FormResource extends Resource
 
                         Forms\Components\TextInput::make('name')
                             ->label('Nombre interno (name)')
-                            ->helperText('Sin espacios, sin acentos. Ej: nombre_completo')
+                            ->helperText('Sin espacios, sin acentos. Ej: tipo_beca')
                             ->required(),
 
                         Forms\Components\Toggle::make('required')
                             ->label('Obligatorio')
                             ->default(false),
 
-                        // Opciones solo para campos select
+                        // Opciones para tipos que usan múltiples opciones
                         Forms\Components\KeyValue::make('options')
-                            ->label('Opciones (para select)')
+                            ->label('Opciones')
                             ->helperText('Clave = valor enviado, Valor = texto visible')
-                            ->visible(fn (Get $get) => $get('type') === 'select'),
+                            ->visible(function (Get $get) {
+                                return in_array($get('type'), [
+                                    'select',
+                                    'checkbox_group',
+                                    'radio',
+                                ]);
+                            }),
+
+                        // --- Condiciones simples: mostrar solo si otro campo tiene cierto valor ---
+                        Forms\Components\TextInput::make('condition_field')
+                            ->label('Mostrar solo si el campo...')
+                            ->helperText('Name de otro campo, ej: tipo_beca')
+                            ->nullable(),
+
+                        Forms\Components\TextInput::make('condition_value')
+                            ->label('es igual a...')
+                            ->helperText('Ej: "A", "si", "1", "docente"...')
+                            ->nullable(),
                     ])
                     ->addActionLabel('Agregar campo')
-                    ->reorderable(true)   // permite drag & drop
+                    ->reorderable(true)   // drag & drop
                     ->cloneable()         // duplicar campos
                     ->columnSpanFull(),
             ]);

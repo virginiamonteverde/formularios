@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\PublicFormController;
 
 /*
 |--------------------------------------------------------------------------
@@ -16,3 +17,11 @@ use Illuminate\Support\Facades\Route;
 Route::get('/', function () {
     return view('welcome');
 });
+
+// Ver un formulario público por su slug
+Route::get('/f/{slug}', [PublicFormController::class, 'show'])
+    ->name('forms.public.show');
+
+// Enviar respuestas de un formulario público
+Route::post('/f/{slug}', [PublicFormController::class, 'submit'])
+    ->name('forms.public.submit');
